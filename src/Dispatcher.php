@@ -58,16 +58,26 @@ class Dispatcher {
      * @var \stdClass
      */
     private $wholeResponse;
-    
+
     /**
      * @var string
      */
     private $pkpCode;
-    
+
     /**
      * @var string
      */
     private $bkpCode;
+
+    /**
+     * @var int timeout in milliseconds
+     */
+    private $timeout = 2500;
+    
+    /**
+     * @var int connection timeout in milliseconds
+     */
+    private $connectTimeout = 2000;
 
     /**
      *
@@ -197,14 +207,13 @@ class Dispatcher {
         isset($response->Varovani) && $this->warnings = $this->processWarnings($response->Varovani);
         return $check ? TRUE : $response->Potvrzeni->fik;
     }
-    
+
     /**
      * Returns array of warnings if the last response contains any, empty array otherwise.
      * 
      * @return array [warning code => message]
      */
-    public function getWarnings()
-    {
+    public function getWarnings() {
         return $this->warnings;
     }
 
@@ -237,6 +246,8 @@ class Dispatcher {
     private function initSoapClient() {
         if ($this->soapClient === NULL) {
             $this->soapClient = new SoapClient($this->service, $this->key, $this->cert, $this->trace, $this->passphrase);
+            $this->soapClient->setTimeout($this->timeout);
+            $this->soapClient->setConnectTimeout($this->connectTimeout);
         }
     }
 
@@ -287,7 +298,7 @@ class Dispatcher {
             'urceno_cerp_zuct',
             'cerp_zuct',
         ];
-        
+
         // remove optional keys
         foreach ($optionals as $key) {
             if ($body[$key] === NULL) {
@@ -341,7 +352,7 @@ class Dispatcher {
      */
     private function processWarnings($warnings) {
         $result = array();
-        if(\count($warnings) === 1) {
+        if (\count($warnings) === 1) {
             $result[\intval($warnings->kod_varov)] = $this->getWarningMsg($warnings->kod_varov);
         } else {
             foreach ($warnings as $warning) {
@@ -355,27 +366,25 @@ class Dispatcher {
      * @param int $id warning code
      * @return string warning message
      */
-    private function getWarningMsg($id)
-    {
-      $result = 'Neznámé varování, zkontrolujte technickou specifikaci.';
-      $msgs = [
-                1 => 'DIČ poplatníka v datové zprávě se neshoduje s DIČ v certifikátu.',
-                2 => 'Chybný formát DIČ pověřujícího poplatníka.',
-                3 => 'Chybná hodnota PKP.',
-                4 => 'Datum a čas přijetí tržby je novější než datum a čas přijetí zprávy.',
-                5 => 'Datum a čas přijetí tržby je výrazně v minulosti.',
-            ];
-      if (\array_key_exists( $id, $msgs )) {
-          $result = $msgs[$id];
-      }
-      return $result;
+    private function getWarningMsg($id) {
+        $result = 'Neznámé varování, zkontrolujte technickou specifikaci.';
+        $msgs = [
+            1 => 'DIČ poplatníka v datové zprávě se neshoduje s DIČ v certifikátu.',
+            2 => 'Chybný formát DIČ pověřujícího poplatníka.',
+            3 => 'Chybná hodnota PKP.',
+            4 => 'Datum a čas přijetí tržby je novější než datum a čas přijetí zprávy.',
+            5 => 'Datum a čas přijetí tržby je výrazně v minulosti.',
+        ];
+        if (\array_key_exists($id, $msgs)) {
+            $result = $msgs[$id];
+        }
+        return $result;
     }
 
     /**
      * @return \stdClass
      */
-    public function getWholeResponse()
-    {
+    public function getWholeResponse() {
         return $this->wholeResponse;
     }
 
@@ -394,7 +403,33 @@ class Dispatcher {
     public function getBkpCode() {
         return $this->bkpCode;
     }
-    
-    
+
+    /**
+     * @param int|null $milliseconds timeout in milliseconds
+     */
+    public function setTimeout($milliseconds) {
+        $this->timeout = $milliseconds;
+    }
+
+    /**
+     * @return int|null timeout in milliseconds
+     */
+    public function getTimeout() {
+        return $this->timeout;
+    }
+
+    /**
+     * @param int|null $milliseconds
+     */
+    public function setConnectTimeout($milliseconds) {
+        $this->connectTimeout = $milliseconds;
+    }
+
+    /**
+     * @return int|null
+     */
+    public function getConnectTimeout() {
+        return $this->connectTimeout;
+    }
 
 }
